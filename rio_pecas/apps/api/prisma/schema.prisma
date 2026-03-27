@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(ANALYST)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Company {
+  id             String            @id @default(cuid())
+  code           String            @unique
+  name           String
+  shortName      String
+  launches       FinancialLaunch[]
+  clients        Client[]
+  vendors        Vendor[]
+  accountGroups  AccountCategory[]
+  accounts       ChartOfAccount[]
+  paymentMethods PaymentMethod[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model Client {
+  id        String            @id @default(cuid())
+  code      String            @unique
+  name      String
+  legalName String?
+  document  String?
+  companyId String?
+  company   Company?          @relation(fields: [companyId], references: [id])
+  launches  FinancialLaunch[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model Vendor {
+  id        String            @id @default(cuid())
+  code      String            @unique
+  name      String
+  companyId String?
+  company   Company?          @relation(fields: [companyId], references: [id])
+  launches  FinancialLaunch[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model AccountCategory {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  dreGroup  String?
+  companyId String?
+  company   Company?         @relation(fields: [companyId], references: [id])
+  accounts  ChartOfAccount[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model ChartOfAccount {
+  id              String             @id @default(cuid())
+  code            String             @unique
+  groupName       String
+  fixedOrVariable String?
+  description     String
+  companyId       String?
+  company         Company?           @relation(fields: [companyId], references: [id])
+  categoryId      String?
+  category        AccountCategory?   @relation(fields: [categoryId], references: [id])
+  launches        FinancialLaunch[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model PaymentMethod {
+  id        String            @id @default(cuid())
+  code      String            @unique
+  name      String
+  companyId String?
+  company   Company?          @relation(fields: [companyId], references: [id])
+  launches  FinancialLaunch[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model FinancialLaunch {
+  id                 String             @id @default(cuid())
+  importBatchId      String?
+  launchDate         DateTime
+  companyId          String
+  clientId           String?
+  accountId          String?
+  vendorId           String?
+  paymentMethodId    String?
+  description        String?
+  revenueAmount      Decimal?           @db.Decimal(14, 2)
+  expenseAmount      Decimal?           @db.Decimal(14, 2)
+  machinesQuantity   Int?
+  machineCondition   MachineCondition?
+  dueDays            Int?
+  dueDate            DateTime?
+  settlementDate     DateTime?
+  totalSettledAmount Decimal?           @db.Decimal(14, 2)
+  financialStatus    FinancialStatus    @default(OPEN)
+  delayDays          Int?
+  isDuplicate        Boolean            @default(false)
+  isCriticalLate     Boolean            @default(false)
+  businessYear       Int
+  businessMonth      Int
+  dueYear            Int?
+  dueMonth           Int?
+  importBatch        ImportBatch?       @relation(fields: [importBatchId], references: [id])
+  company            Company            @relation(fields: [companyId], references: [id])
+  client             Client?            @relation(fields: [clientId], references: [id])
+  account            ChartOfAccount?    @relation(fields: [accountId], references: [id])
+  vendor             Vendor?            @relation(fields: [vendorId], references: [id])
+  paymentMethod      PaymentMethod?     @relation(fields: [paymentMethodId], references: [id])
+  installments       FinancialInstallment[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model FinancialInstallment {
+  id             String          @id @default(cuid())
+  launchId       String
+  installmentNo  Int
+  dueDate        DateTime?
+  amount         Decimal         @db.Decimal(14, 2)
+  settledAmount  Decimal?        @db.Decimal(14, 2)
+  settlementDate DateTime?
+  status         FinancialStatus @default(OPEN)
+  launch         FinancialLaunch @relation(fields: [launchId], references: [id])
+}
+
+model ImportBatch {
+  id              String            @id @default(cuid())
+  sourceFileName  String
+  sourceFileHash  String
+  versionTag      String
+  status          ImportBatchStatus @default(PENDING)
+  launches        FinancialLaunch[]
+  importedCount   Int               @default(0)
+  ignoredCount    Int               @default(0)
+  duplicatesCount Int               @default(0)
+  invalidCount    Int               @default(0)
+  updatedCount    Int               @default(0)
+  createdAt       DateTime          @default(now())
+}
+
+model CashflowForecast {
+  id            String           @id @default(cuid())
+  scenario      ForecastScenario
+  referenceDate DateTime
+  projectedIn   Decimal          @db.Decimal(14, 2)
+  projectedOut  Decimal          @db.Decimal(14, 2)
+  projectedNet  Decimal          @db.Decimal(14, 2)
+  notes         String?
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  ANALYST
+  VIEWER
+}
+
+enum FinancialStatus {
+  OPEN
+  OVERDUE
+  PARTIAL
+  SETTLED
+}
+
+enum MachineCondition {
+  NEW
+  USED
+}
+
+enum ImportBatchStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  ROLLED_BACK
+}
+
+enum ForecastScenario {
+  CONSERVATIVE
+  PROBABLE
+  OPTIMISTIC
+}
