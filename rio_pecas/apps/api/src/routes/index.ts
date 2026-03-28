@@ -26,6 +26,11 @@ import {
   createClient,
   createPaymentMethod,
   createVendor,
+  deleteAccountCategory,
+  deleteChartOfAccount,
+  deleteClient,
+  deletePaymentMethod,
+  deleteVendor,
   getMasterDataOverview,
   listAccountCategories,
   listChartOfAccounts,
@@ -147,6 +152,7 @@ router.put('/master-data/clients/:id', async (req, res) => {
 
   return res.json(await updateClient(req.params.id, body));
 });
+router.delete('/master-data/clients/:id', async (req, res) => res.json(await deleteClient(req.params.id)));
 router.get('/master-data/vendors', async (req, res) =>
   res.json(await listVendors({ companyCode: req.query.companyCode as string | undefined })),
 );
@@ -172,6 +178,7 @@ router.put('/master-data/vendors/:id', async (req, res) => {
 
   return res.json(await updateVendor(req.params.id, body));
 });
+router.delete('/master-data/vendors/:id', async (req, res) => res.json(await deleteVendor(req.params.id)));
 router.get('/master-data/account-categories', async (req, res) =>
   res.json(await listAccountCategories({ companyCode: req.query.companyCode as string | undefined })),
 );
@@ -197,6 +204,7 @@ router.put('/master-data/account-categories/:id', async (req, res) => {
 
   return res.json(await updateAccountCategory(req.params.id, body));
 });
+router.delete('/master-data/account-categories/:id', async (req, res) => res.json(await deleteAccountCategory(req.params.id)));
 router.get('/master-data/chart-of-accounts', async (req, res) =>
   res.json(await listChartOfAccounts({ companyCode: req.query.companyCode as string | undefined })),
 );
@@ -228,6 +236,7 @@ router.put('/master-data/chart-of-accounts/:id', async (req, res) => {
 
   return res.json(await updateChartOfAccount(req.params.id, body));
 });
+router.delete('/master-data/chart-of-accounts/:id', async (req, res) => res.json(await deleteChartOfAccount(req.params.id)));
 router.get('/master-data/payment-methods', async (req, res) =>
   res.json(await listPaymentMethods({ companyCode: req.query.companyCode as string | undefined })),
 );
@@ -253,6 +262,7 @@ router.put('/master-data/payment-methods/:id', async (req, res) => {
 
   return res.json(await updatePaymentMethod(req.params.id, body));
 });
+router.delete('/master-data/payment-methods/:id', async (req, res) => res.json(await deletePaymentMethod(req.params.id)));
 router.get('/imports', async (_req, res) => res.json(await prisma.importBatch.findMany({ orderBy: { createdAt: 'desc' } })));
 
 router.post('/imports/run-local', async (req, res) => {

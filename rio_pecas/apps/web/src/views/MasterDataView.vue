@@ -19,9 +19,31 @@
         Este ERP integra Rio Pecas e MC Maquinas. Para impedir cadastro na empresa errada, os formularios so sao liberados
         quando a empresa estiver escolhida no topo da tela.
       </p>
+      <div class="inline-company-picker">
+        <label class="form-field inline-select">
+          <span>Empresa para cadastro</span>
+          <select v-model="filters.companyCode">
+            <option value="">Escolha uma empresa</option>
+            <option v-for="company in filters.companies" :key="company.code" :value="company.code">
+              {{ company.name }}
+            </option>
+          </select>
+        </label>
+        <div class="quick-company-actions">
+          <button
+            v-for="company in filters.companies"
+            :key="company.code"
+            type="button"
+            class="segment-button"
+            @click="filters.companyCode = company.code"
+          >
+            Usar {{ company.name }}
+          </button>
+        </div>
+      </div>
     </article>
 
-    <section class="grid kpis">
+    <section v-if="hasSelectedCompany" class="grid kpis">
       <article class="card kpi-card">
         <div class="kpi-accent"></div>
         <p class="kpi-label">Clientes</p>
@@ -48,7 +70,7 @@
       </article>
     </section>
 
-    <article class="card">
+    <article v-if="hasSelectedCompany" class="card">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Dominios base</p>
@@ -70,13 +92,24 @@
       </div>
     </article>
 
-    <article v-if="activeSection === 'clients'" class="card">
+    <article v-if="hasSelectedCompany && activeSection === 'clients'" class="card table-card">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Cadastro</p>
           <h3>Clientes da empresa selecionada</h3>
         </div>
         <div class="soft-badge">{{ clients.length }} registros</div>
+      </div>
+
+      <div class="table-filters">
+        <label class="form-field">
+          <span>Filtrar por nome</span>
+          <input v-model="clientFilters.name" placeholder="Digite o nome do cliente" />
+        </label>
+        <label class="form-field">
+          <span>Filtrar por CNPJ / documento</span>
+          <input v-model="clientFilters.document" placeholder="Digite o CNPJ ou CPF" />
+        </label>
       </div>
 
       <div class="master-layout">
@@ -113,30 +146,49 @@
                 <th>Nome</th>
                 <th>Razao social</th>
                 <th>Documento</th>
-                <th></th>
+                <th>Acoes</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in clients" :key="item.id">
+              <tr v-for="item in pagedClients" :key="item.id">
                 <td>{{ item.code }}</td>
                 <td>{{ item.name }}</td>
                 <td>{{ item.legalName || '-' }}</td>
                 <td>{{ item.document || '-' }}</td>
-                <td><button class="ghost-button" type="button" @click="editClient(item)">Editar</button></td>
+                <td class="row-actions">
+                  <button class="ghost-button" type="button" @click="editClient(item)">Editar</button>
+                  <button class="ghost-button danger-button" type="button" @click="removeClient(item)">Excluir</button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <div v-if="showPagination(filteredClients)" class="pagination-bar">
+          <button class="ghost-button" type="button" :disabled="pages.clients === 1" @click="pages.clients -= 1">Anterior</button>
+          <span class="pagination-label">Pagina {{ pages.clients }} de {{ totalPages(filteredClients) }}</span>
+          <button class="ghost-button" type="button" :disabled="pages.clients >= totalPages(filteredClients)" @click="pages.clients += 1">Proxima</button>
+        </div>
       </div>
     </article>
 
-    <article v-if="activeSection === 'vendors'" class="card">
+    <article v-if="hasSelectedCompany && activeSection === 'vendors'" class="card table-card">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Cadastro</p>
           <h3>Vendedores da empresa selecionada</h3>
         </div>
         <div class="soft-badge">{{ vendors.length }} registros</div>
+      </div>
+
+      <div class="table-filters">
+        <label class="form-field">
+          <span>Filtrar por codigo</span>
+          <input v-model="vendorFilters.code" placeholder="Digite o codigo" />
+        </label>
+        <label class="form-field">
+          <span>Filtrar por nome</span>
+          <input v-model="vendorFilters.name" placeholder="Digite o nome do vendedor" />
+        </label>
       </div>
 
       <div class="master-layout">
@@ -164,29 +216,48 @@
                 <th>Codigo</th>
                 <th>Nome</th>
                 <th>Empresa</th>
-                <th></th>
+                <th>Acoes</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in vendors" :key="item.id">
+              <tr v-for="item in pagedVendors" :key="item.id">
                 <td>{{ item.code }}</td>
                 <td>{{ item.name }}</td>
                 <td>{{ item.company?.name || '-' }}</td>
-                <td><button class="ghost-button" type="button" @click="editVendor(item)">Editar</button></td>
+                <td class="row-actions">
+                  <button class="ghost-button" type="button" @click="editVendor(item)">Editar</button>
+                  <button class="ghost-button danger-button" type="button" @click="removeVendor(item)">Excluir</button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <div v-if="showPagination(filteredVendors)" class="pagination-bar">
+          <button class="ghost-button" type="button" :disabled="pages.vendors === 1" @click="pages.vendors -= 1">Anterior</button>
+          <span class="pagination-label">Pagina {{ pages.vendors }} de {{ totalPages(filteredVendors) }}</span>
+          <button class="ghost-button" type="button" :disabled="pages.vendors >= totalPages(filteredVendors)" @click="pages.vendors += 1">Proxima</button>
+        </div>
       </div>
     </article>
 
-    <article v-if="activeSection === 'categories'" class="card">
+    <article v-if="hasSelectedCompany && activeSection === 'categories'" class="card table-card">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Cadastro</p>
           <h3>Categorias contabeis e grupos do DRE</h3>
         </div>
         <div class="soft-badge">{{ categories.length }} registros</div>
+      </div>
+
+      <div class="table-filters">
+        <label class="form-field">
+          <span>Filtrar por categoria</span>
+          <input v-model="categoryFilters.name" placeholder="Digite a categoria" />
+        </label>
+        <label class="form-field">
+          <span>Filtrar por grupo DRE</span>
+          <input v-model="categoryFilters.dreGroup" placeholder="Digite o grupo DRE" />
+        </label>
       </div>
 
       <div class="master-layout">
@@ -213,28 +284,55 @@
               <tr>
                 <th>Categoria</th>
                 <th>Grupo DRE</th>
-                <th></th>
+                <th>Acoes</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in categories" :key="item.id">
+              <tr v-for="item in pagedCategories" :key="item.id">
                 <td>{{ item.name }}</td>
                 <td>{{ item.dreGroup || '-' }}</td>
-                <td><button class="ghost-button" type="button" @click="editCategory(item)">Editar</button></td>
+                <td class="row-actions">
+                  <button class="ghost-button" type="button" @click="editCategory(item)">Editar</button>
+                  <button class="ghost-button danger-button" type="button" @click="removeCategory(item)">Excluir</button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <div v-if="showPagination(filteredCategories)" class="pagination-bar">
+          <button class="ghost-button" type="button" :disabled="pages.categories === 1" @click="pages.categories -= 1">Anterior</button>
+          <span class="pagination-label">Pagina {{ pages.categories }} de {{ totalPages(filteredCategories) }}</span>
+          <button class="ghost-button" type="button" :disabled="pages.categories >= totalPages(filteredCategories)" @click="pages.categories += 1">Proxima</button>
+        </div>
       </div>
     </article>
 
-    <article v-if="activeSection === 'accounts'" class="card">
+    <article v-if="hasSelectedCompany && activeSection === 'accounts'" class="card table-card">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Cadastro</p>
           <h3>Contas contabeis da empresa selecionada</h3>
         </div>
         <div class="soft-badge">{{ accounts.length }} registros</div>
+      </div>
+
+      <div class="table-filters table-filters-wide">
+        <label class="form-field">
+          <span>Filtrar por codigo</span>
+          <input v-model="accountFilters.code" placeholder="Digite o codigo da conta" />
+        </label>
+        <label class="form-field">
+          <span>Filtrar por descricao</span>
+          <input v-model="accountFilters.description" placeholder="Digite a descricao da conta" />
+        </label>
+        <label class="form-field">
+          <span>Filtrar por grupo</span>
+          <input v-model="accountFilters.groupName" placeholder="Digite o grupo contabil" />
+        </label>
+        <label class="form-field">
+          <span>Filtrar por categoria</span>
+          <input v-model="accountFilters.category" placeholder="Digite a categoria" />
+        </label>
       </div>
 
       <div class="master-layout">
@@ -279,31 +377,50 @@
                 <th>Grupo</th>
                 <th>Tipo</th>
                 <th>Categoria</th>
-                <th></th>
+                <th>Acoes</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in accounts" :key="item.id">
+              <tr v-for="item in pagedAccounts" :key="item.id">
                 <td>{{ item.code }}</td>
                 <td>{{ item.description }}</td>
                 <td>{{ item.groupName }}</td>
                 <td>{{ item.fixedOrVariable || '-' }}</td>
                 <td>{{ item.category?.name || '-' }}</td>
-                <td><button class="ghost-button" type="button" @click="editAccount(item)">Editar</button></td>
+                <td class="row-actions">
+                  <button class="ghost-button" type="button" @click="editAccount(item)">Editar</button>
+                  <button class="ghost-button danger-button" type="button" @click="removeAccount(item)">Excluir</button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <div v-if="showPagination(filteredAccounts)" class="pagination-bar">
+          <button class="ghost-button" type="button" :disabled="pages.accounts === 1" @click="pages.accounts -= 1">Anterior</button>
+          <span class="pagination-label">Pagina {{ pages.accounts }} de {{ totalPages(filteredAccounts) }}</span>
+          <button class="ghost-button" type="button" :disabled="pages.accounts >= totalPages(filteredAccounts)" @click="pages.accounts += 1">Proxima</button>
+        </div>
       </div>
     </article>
 
-    <article v-if="activeSection === 'paymentMethods'" class="card">
+    <article v-if="hasSelectedCompany && activeSection === 'paymentMethods'" class="card table-card">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Cadastro</p>
           <h3>Formas de pagamento</h3>
         </div>
         <div class="soft-badge">{{ paymentMethods.length }} registros</div>
+      </div>
+
+      <div class="table-filters">
+        <label class="form-field">
+          <span>Filtrar por codigo</span>
+          <input v-model="paymentMethodFilters.code" placeholder="Digite o codigo" />
+        </label>
+        <label class="form-field">
+          <span>Filtrar por descricao</span>
+          <input v-model="paymentMethodFilters.name" placeholder="Digite a forma de pagamento" />
+        </label>
       </div>
 
       <div class="master-layout">
@@ -335,18 +452,26 @@
                 <th>Codigo</th>
                 <th>Descricao</th>
                 <th>Empresa</th>
-                <th></th>
+                <th>Acoes</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in paymentMethods" :key="item.id">
+              <tr v-for="item in pagedPaymentMethods" :key="item.id">
                 <td>{{ item.code }}</td>
                 <td>{{ item.name }}</td>
                 <td>{{ item.company?.name || '-' }}</td>
-                <td><button class="ghost-button" type="button" @click="editPaymentMethod(item)">Editar</button></td>
+                <td class="row-actions">
+                  <button class="ghost-button" type="button" @click="editPaymentMethod(item)">Editar</button>
+                  <button class="ghost-button danger-button" type="button" @click="removePaymentMethod(item)">Excluir</button>
+                </td>
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="showPagination(filteredPaymentMethods)" class="pagination-bar">
+          <button class="ghost-button" type="button" :disabled="pages.paymentMethods === 1" @click="pages.paymentMethods -= 1">Anterior</button>
+          <span class="pagination-label">Pagina {{ pages.paymentMethods }} de {{ totalPages(filteredPaymentMethods) }}</span>
+          <button class="ghost-button" type="button" :disabled="pages.paymentMethods >= totalPages(filteredPaymentMethods)" @click="pages.paymentMethods += 1">Proxima</button>
         </div>
       </div>
     </article>
@@ -359,6 +484,7 @@ import { api, ensureAuth } from '../lib/api';
 import { useFiltersStore } from '../stores/filters';
 
 const filters = useFiltersStore();
+const pageSize = 12;
 const activeSection = ref('clients');
 const sections = [
   { id: 'clients', label: 'Clientes' },
@@ -418,11 +544,120 @@ const paymentMethodForm = reactive({
   name: '',
 });
 
+const clientFilters = reactive({
+  name: '',
+  document: '',
+});
+
+const vendorFilters = reactive({
+  code: '',
+  name: '',
+});
+
+const categoryFilters = reactive({
+  name: '',
+  dreGroup: '',
+});
+
+const accountFilters = reactive({
+  code: '',
+  description: '',
+  groupName: '',
+  category: '',
+});
+
+const paymentMethodFilters = reactive({
+  code: '',
+  name: '',
+});
+
+const pages = reactive({
+  clients: 1,
+  vendors: 1,
+  categories: 1,
+  accounts: 1,
+  paymentMethods: 1,
+});
+
 const hasSelectedCompany = computed(() => Boolean(filters.companyCode));
+const paginate = <T>(items: T[], page: number) => items.slice((page - 1) * pageSize, page * pageSize);
+const filteredClients = computed(() => {
+  const name = clientFilters.name.trim().toLowerCase();
+  const document = clientFilters.document.trim().toLowerCase();
+
+  return clients.value.filter((item) => {
+    const matchesName = !name || String(item.name || '').toLowerCase().includes(name) || String(item.legalName || '').toLowerCase().includes(name);
+    const matchesDocument = !document || String(item.document || '').toLowerCase().includes(document);
+    return matchesName && matchesDocument;
+  });
+});
+const pagedClients = computed(() => paginate(filteredClients.value, pages.clients));
+const filteredVendors = computed(() => {
+  const code = vendorFilters.code.trim().toLowerCase();
+  const name = vendorFilters.name.trim().toLowerCase();
+  return vendors.value.filter((item) => {
+    const matchesCode = !code || String(item.code || '').toLowerCase().includes(code);
+    const matchesName = !name || String(item.name || '').toLowerCase().includes(name);
+    return matchesCode && matchesName;
+  });
+});
+const filteredCategories = computed(() => {
+  const name = categoryFilters.name.trim().toLowerCase();
+  const dreGroup = categoryFilters.dreGroup.trim().toLowerCase();
+  return categories.value.filter((item) => {
+    const matchesName = !name || String(item.name || '').toLowerCase().includes(name);
+    const matchesDreGroup = !dreGroup || String(item.dreGroup || '').toLowerCase().includes(dreGroup);
+    return matchesName && matchesDreGroup;
+  });
+});
+const filteredAccounts = computed(() => {
+  const code = accountFilters.code.trim().toLowerCase();
+  const description = accountFilters.description.trim().toLowerCase();
+  const groupName = accountFilters.groupName.trim().toLowerCase();
+  const category = accountFilters.category.trim().toLowerCase();
+  return accounts.value.filter((item) => {
+    const matchesCode = !code || String(item.code || '').toLowerCase().includes(code);
+    const matchesDescription = !description || String(item.description || '').toLowerCase().includes(description);
+    const matchesGroup = !groupName || String(item.groupName || '').toLowerCase().includes(groupName);
+    const matchesCategory = !category || String(item.category?.name || '').toLowerCase().includes(category);
+    return matchesCode && matchesDescription && matchesGroup && matchesCategory;
+  });
+});
+const filteredPaymentMethods = computed(() => {
+  const code = paymentMethodFilters.code.trim().toLowerCase();
+  const name = paymentMethodFilters.name.trim().toLowerCase();
+  return paymentMethods.value.filter((item) => {
+    const matchesCode = !code || String(item.code || '').toLowerCase().includes(code);
+    const matchesName = !name || String(item.name || '').toLowerCase().includes(name);
+    return matchesCode && matchesName;
+  });
+});
+const pagedVendors = computed(() => paginate(filteredVendors.value, pages.vendors));
+const pagedCategories = computed(() => paginate(filteredCategories.value, pages.categories));
+const pagedAccounts = computed(() => paginate(filteredAccounts.value, pages.accounts));
+const pagedPaymentMethods = computed(() => paginate(filteredPaymentMethods.value, pages.paymentMethods));
 
 const companyParams = computed(() => ({
   companyCode: filters.companyCode,
 }));
+
+function totalPages<T>(items: { value: T[] } | T[]) {
+  const source = Array.isArray(items) ? items : items.value;
+  return Math.max(1, Math.ceil(source.length / pageSize));
+}
+
+function showPagination<T>(items: { value: T[] } | T[]) {
+  const source = Array.isArray(items) ? items : items.value;
+  return source.length > pageSize;
+}
+
+function resetPages() {
+  pages.clients = 1;
+  pages.vendors = 1;
+  pages.categories = 1;
+  pages.accounts = 1;
+  pages.paymentMethods = 1;
+}
 
 async function loadMasterData() {
   await ensureAuth();
@@ -438,6 +673,18 @@ async function loadMasterData() {
     overview.categories = 0;
     overview.accounts = 0;
     overview.paymentMethods = 0;
+    clientFilters.name = '';
+    clientFilters.document = '';
+    vendorFilters.code = '';
+    vendorFilters.name = '';
+    categoryFilters.name = '';
+    categoryFilters.dreGroup = '';
+    accountFilters.code = '';
+    accountFilters.description = '';
+    accountFilters.groupName = '';
+    accountFilters.category = '';
+    paymentMethodFilters.code = '';
+    paymentMethodFilters.name = '';
     return;
   }
 
@@ -457,6 +704,7 @@ async function loadMasterData() {
   categories.value = categoriesResponse.data;
   accounts.value = accountsResponse.data;
   paymentMethods.value = paymentMethodsResponse.data;
+  resetPages();
 }
 
 function resetClientForm() {
@@ -540,6 +788,13 @@ async function saveClient() {
   await loadMasterData();
 }
 
+async function removeClient(item: any) {
+  if (!window.confirm(`Excluir o cliente "${item.name}"?`)) return;
+  await api.delete(`/master-data/clients/${item.id}`);
+  if (clientEditingId.value === item.id) resetClientForm();
+  await loadMasterData();
+}
+
 async function saveVendor() {
   const payload = { companyCode: filters.companyCode, ...vendorForm };
   if (vendorEditingId.value) {
@@ -551,6 +806,13 @@ async function saveVendor() {
   await loadMasterData();
 }
 
+async function removeVendor(item: any) {
+  if (!window.confirm(`Excluir o vendedor "${item.name}"?`)) return;
+  await api.delete(`/master-data/vendors/${item.id}`);
+  if (vendorEditingId.value === item.id) resetVendorForm();
+  await loadMasterData();
+}
+
 async function saveCategory() {
   const payload = { companyCode: filters.companyCode, ...categoryForm };
   if (categoryEditingId.value) {
@@ -559,6 +821,13 @@ async function saveCategory() {
     await api.post('/master-data/account-categories', payload);
   }
   resetCategoryForm();
+  await loadMasterData();
+}
+
+async function removeCategory(item: any) {
+  if (!window.confirm(`Excluir a categoria "${item.name}"?`)) return;
+  await api.delete(`/master-data/account-categories/${item.id}`);
+  if (categoryEditingId.value === item.id) resetCategoryForm();
   await loadMasterData();
 }
 
@@ -578,6 +847,13 @@ async function saveAccount() {
   await loadMasterData();
 }
 
+async function removeAccount(item: any) {
+  if (!window.confirm(`Excluir a conta "${item.description}"?`)) return;
+  await api.delete(`/master-data/chart-of-accounts/${item.id}`);
+  if (accountEditingId.value === item.id) resetAccountForm();
+  await loadMasterData();
+}
+
 async function savePaymentMethod() {
   const payload = { companyCode: filters.companyCode, ...paymentMethodForm };
   if (paymentMethodEditingId.value) {
@@ -586,6 +862,13 @@ async function savePaymentMethod() {
     await api.post('/master-data/payment-methods', payload);
   }
   resetPaymentMethodForm();
+  await loadMasterData();
+}
+
+async function removePaymentMethod(item: any) {
+  if (!window.confirm(`Excluir a forma de pagamento "${item.name}"?`)) return;
+  await api.delete(`/master-data/payment-methods/${item.id}`);
+  if (paymentMethodEditingId.value === item.id) resetPaymentMethodForm();
   await loadMasterData();
 }
 
@@ -603,6 +886,41 @@ watch(
     resetAccountForm();
     resetPaymentMethodForm();
     await loadMasterData();
+  },
+);
+
+watch(
+  () => [clientFilters.name, clientFilters.document],
+  () => {
+    pages.clients = 1;
+  },
+);
+
+watch(
+  () => [vendorFilters.code, vendorFilters.name],
+  () => {
+    pages.vendors = 1;
+  },
+);
+
+watch(
+  () => [categoryFilters.name, categoryFilters.dreGroup],
+  () => {
+    pages.categories = 1;
+  },
+);
+
+watch(
+  () => [accountFilters.code, accountFilters.description, accountFilters.groupName, accountFilters.category],
+  () => {
+    pages.accounts = 1;
+  },
+);
+
+watch(
+  () => [paymentMethodFilters.code, paymentMethodFilters.name],
+  () => {
+    pages.paymentMethods = 1;
   },
 );
 </script>
