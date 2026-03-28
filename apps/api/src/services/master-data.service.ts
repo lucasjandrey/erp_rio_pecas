@@ -145,6 +145,10 @@ export async function updateClient(id: string, input: ClientInput) {
   });
 }
 
+export async function deleteClient(id: string) {
+  return prisma.client.delete({ where: { id } });
+}
+
 export async function listVendors(scope: MasterDataScope) {
   return prisma.vendor.findMany({
     where: companyScopedVendorWhere(scope.companyCode),
@@ -185,6 +189,10 @@ export async function updateVendor(id: string, input: VendorInput) {
   });
 }
 
+export async function deleteVendor(id: string) {
+  return prisma.vendor.delete({ where: { id } });
+}
+
 export async function listAccountCategories(scope: MasterDataScope) {
   return prisma.accountCategory.findMany({
     where: companyScopedAccountCategoryWhere(scope.companyCode),
@@ -223,6 +231,10 @@ export async function updateAccountCategory(id: string, input: CategoryInput) {
     },
     include: { company: true },
   });
+}
+
+export async function deleteAccountCategory(id: string) {
+  return prisma.accountCategory.delete({ where: { id } });
 }
 
 export async function listChartOfAccounts(scope: MasterDataScope) {
@@ -274,6 +286,10 @@ export async function updateChartOfAccount(id: string, input: AccountInput) {
   });
 }
 
+export async function deleteChartOfAccount(id: string) {
+  return prisma.chartOfAccount.delete({ where: { id } });
+}
+
 export async function listPaymentMethods(scope: MasterDataScope) {
   return prisma.paymentMethod.findMany({
     where: companyScopedPaymentMethodWhere(scope.companyCode),
@@ -312,4 +328,8 @@ export async function updatePaymentMethod(id: string, input: PaymentMethodInput)
     },
     include: { company: true },
   });
+}
+
+export async function deletePaymentMethod(id: string) {
+  return prisma.paymentMethod.delete({ where: { id } });
 }
